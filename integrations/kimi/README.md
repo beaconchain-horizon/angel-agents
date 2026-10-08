@@ -1,6 +1,6 @@
 # Kimi Code CLI Integration
 
-Converts all Agency agents into Kimi Code CLI agent specifications. Each agent
+Converts all Horizon Angel agents into Kimi Code CLI agent specifications. Each agent
 becomes a directory containing `agent.yaml` (agent spec) and `system.md` (system
 prompt).
 

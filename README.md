@@ -1066,7 +1066,7 @@ Want to add a translation? Open an issue and we'll link it here.
 
 ## 🔗 Related Resources
 
-- [awesome-openclaw-agents](https://github.com/mergisi/awesome-openclaw-agents) — Community-maintained OpenClaw agent collection (derived from this repo)
+- **[Horizon Angel](https://github.com/beaconchain-horizon/angel-agents)** — Official Horizon Angel multi-agent platform.
 
 ---
 

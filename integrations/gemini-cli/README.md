@@ -1,6 +1,6 @@
 # Gemini CLI Integration
 
-Packages all Agency agents as Gemini CLI subagents. These agents
+Packages all Horizon Angel agents as Gemini CLI subagents. These agents
 install to `~/.gemini/agents/`.
 
 ## Install

@@ -469,7 +469,7 @@ def readme(agent_count: int) -> str:
         relevant Agency specialists. Search first, then delegate to selected agents
         such as frontend, backend, UX, QA, data engineering, and product strategy as
         needed. Load/delegate each specialist on demand rather than loading all
-        Agency agents at startup.
+        Horizon Angel agents at startup.
         ```
 
         ## Install
