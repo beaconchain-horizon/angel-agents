@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>Horizon Angel — Mission Control</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Tahoma, sans-serif;
+    background: #0b1220; color: #e6edf3;
+    height: 100vh; display: grid;
+    grid-template-columns: 260px 1fr 320px;
+    grid-template-rows: 56px 1fr 200px;
+    grid-template-areas: "header header header" "agents chat log" "term term term";
+    gap: 1px; background-color: #1f2937;
+  }
+  header { grid-area: header; background: #111827; display: flex; align-items: center; padding: 0 20px; gap: 16px; }
+  header h1 { font-size: 16px; color: #7dd3fc; }
+  header .owner { font-size: 12px; color: #facc15; }
+  header .status { font-size: 12px; color: #94a3b8; margin-right: auto; }
+  header button { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 12px; }
+  header button.active { background: #2563eb; color: #fff; }
+
+  .agents { grid-area: agents; background: #0f172a; overflow-y: auto; padding: 12px; }
+  .agents h2 { font-size: 12px; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px; }
+  .agent-item { padding: 6px 8px; font-size: 12px; border-radius: 4px; cursor: pointer; color: #cbd5e1; }
+  .agent-item:hover { background: #1e293b; }
+  .agent-item.selected { background: #1d4ed8; color: #fff; }
+
+  .chat { grid-area: chat; background: #0b1220; display: flex; flex-direction: column; }
+  .chat-log { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .msg { max-width: 78%; padding: 12px 16px; border-radius: 10px; line-height: 1.8; white-space: pre-wrap; font-size: 13px; }
+  .msg.user { background: #1d4ed8; align-self: flex-start; }
+  .msg.bot { background: #1e293b; align-self: flex-end; border: 1px solid #334155; }
+  .msg .who { font-size: 10px; color: #93c5fd; margin-bottom: 6px; }
+  .msg pre { background: #0b1220; padding: 8px; border-radius: 4px; overflow-x: auto; font-size: 11px; margin: 6px 0; direction: ltr; text-align: left; }
+  .msg code { background: #0b1220; padding: 2px 4px; border-radius: 3px; font-size: 11px; direction: ltr; }
+  .msg table { border-collapse: collapse; margin: 6px 0; font-size: 12px; }
+  .msg table td, .msg table th { border: 1px solid #334155; padding: 4px 8px; }
+
+  .chat-input { display: flex; gap: 8px; padding: 12px; background: #111827; border-top: 1px solid #1f2937; }
+  .chat-input input { flex: 1; background: #0b1220; color: #e6edf3; border: 1px solid #334155; border-radius: 6px; padding: 10px 12px; font-family: inherit; font-size: 13px; }
+  .chat-input button { background: #2563eb; color: #fff; border: 0; border-radius: 6px; padding: 10px 18px; cursor: pointer; font-family: inherit; }
+  .chat-input button:hover { background: #1d4ed8; }
+  .chat-input button.voice { background: #16a34a; padding: 10px 14px; }
+  .chat-input button.voice.listening { background: #dc2626; animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: 0.6; } }
+
+  .log { grid-area: log; background: #0f172a; overflow-y: auto; padding: 12px; font-size: 11px; font-family: Consolas, monospace; color: #94a3b8; }
+  .log h2 { font-size: 12px; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px; font-family: inherit; }
+  .log-line { padding: 3px 0; border-bottom: 1px solid #1e293b; }
+
+  .term { grid-area: term; background: #000; overflow-y: auto; padding: 8px 12px; font-family: Consolas, monospace; font-size: 12px; color: #4ade80; }
+  .term .prompt { color: #facc15; }
+  .term input { background: transparent; color: #4ade80; border: 0; outline: 0; font-family: inherit; font-size: 12px; width: 80%; }
+
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; z-index: 100; }
+  .modal.on { display: flex; }
+  .modal-box { background: #111827; padding: 24px; border-radius: 12px; width: 600px; max-width: 90%; }
+  .modal-box h2 { font-size: 14px; margin-bottom: 16px; color: #7dd3fc; }
+  .modal-box input, .modal-box textarea { width: 100%; background: #0b1220; color: #e6edf3; border: 1px solid #334155; border-radius: 6px; padding: 10px; margin-bottom: 10px; font-family: inherit; }
+  .modal-box textarea { min-height: 200px; resize: vertical; direction: ltr; text-align: left; font-family: Consolas, monospace; font-size: 12px; }
+  .modal-box button { background: #2563eb; color: #fff; border: 0; border-radius: 6px; padding: 10px 18px; cursor: pointer; font-family: inherit; margin-left: 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🎭 Horizon Angel</h1>
+  <span class="owner">Owner: Mahdi Amoli Moghaddam</span>
+  <span class="status" id="status">آماده</span>
+  <button id="langBtn" title="تغییر زبان">🌐 FA</button>
+  <button id="newFileBtn">📄 فایل جدید</button>
+</header>
+
+<aside class="agents">
+  <h2>ایجنت‌ها (<span id="agentCount">0</span>)</h2>
+  <div id="agentList"></div>
+</aside>
+
+<main class="chat">
+  <div class="chat-log" id="chatLog">
+    <div class="msg bot">
+      <div class="who">سیستم</div>
+      سلام آقای آملی مقدم. آماده‌ام. با من حرف بزن یا تایپ کن.
+    </div>
+  </div>
+  <div class="chat-input">
+    <input id="msgInput" placeholder="مثلاً: وضعیت مخزن را چک کن..." />
+    <button class="voice" id="voiceBtn" title="ضبط صدا">🎤</button>
+    <button id="sendBtn">ارسال</button>
+  </div>
+</main>
+
+<aside class="log">
+  <h2>لاگ</h2>
+  <div id="logList"></div>
+</aside>
+
+<footer class="term">
+  <div><span class="prompt">horizon@surface ~$</span> <input id="termInput" placeholder="help / git-status / agents / clear" /></div>
+  <div id="termLog" style="margin-top:6px;color:#94a3b8;"></div>
+</footer>
+
+<div class="modal" id="fileModal">
+  <div class="modal-box">
+    <h2>ساخت فایل جدید</h2>
+    <input id="fileName" placeholder="مثلاً: docs/note.md یا scripts/test.sh" />
+    <textarea id="fileContent" placeholder="محتوای فایل..."></textarea>
+    <div style="text-align:left;">
+      <button id="fileCancel">لغو</button>
+      <button id="fileSave">ذخیره</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const state = { agents: [], selected: new Set(), lang: 'fa' };
+
+// ─── helper ───
+function log(line) {
+  const el = document.getElementById('logList');
+  const t = new Date().toLocaleTimeString('fa-IR');
+  const div = document.createElement('div');
+  div.className = 'log-line';
+  div.textContent = `[${t}] ${line}`;
+  el.prepend(div);
+}
+function setStatus(s) { document.getElementById('status').textContent = s; }
+
+// ─── markdown ساده ───
+function renderMd(text) {
+  let s = text
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // code blocks
+  s = s.replace(/```([\s\S]*?)```/g, (_, c) => `<pre>${c.trim()}</pre>`);
+  // inline code
+  s = s.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // bold
+  s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  // headers
+  s = s.replace(/^## (.+)$/gm, '<h3 style="margin:8px 0;color:#7dd3fc;">$1</h3>');
+  // tables
+  s = s.replace(/(\|.+\|\n)+/g, (tbl) => {
+    const rows = tbl.trim().split('\n');
+    if (rows.length < 2) return tbl;
+    const cells = rows.map(r => r.split('|').slice(1,-1).map(x => x.trim()));
+    const head = cells[0];
+    const body = cells.slice(2);
+    return '<table><thead><tr>' + head.map(h => `<th>${h}</th>`).join('') + '</tr></thead><tbody>' +
+           body.map(r => '<tr>' + r.map(c => `<td>${c}</td>`).join('') + '</tr>').join('') +
+           '</tbody></table>';
+  });
+  return s;
+}
+
+// ─── agents ───
+async function loadAgents() {
+  const r = await fetch('/api/agents');
+  state.agents = await r.json();
+  document.getElementById('agentCount').textContent = state.agents.length;
+  const list = document.getElementById('agentList');
+  list.innerHTML = '';
+  for (const a of state.agents) {
+    const d = document.createElement('div');
+    d.className = 'agent-item';
+    d.textContent = a.path;
+    d.title = a.path;
+    d.onclick = () => {
+      if (state.selected.has(a.path)) {
+        state.selected.delete(a.path);
+        d.classList.remove('selected');
+      } else {
+        state.selected.add(a.path);
+        d.classList.add('selected');
+      }
+    };
+    list.appendChild(d);
+  }
+  log(`loaded ${state.agents.length} agents`);
+}
+
+// ─── chat ───
+function addMsg(who, text, cls) {
+  const el = document.createElement('div');
+  el.className = 'msg ' + cls;
+  el.innerHTML = `<div class="who">${who}</div>${renderMd(text)}`;
+  document.getElementById('chatLog').appendChild(el);
+  el.scrollIntoView({ behavior: 'smooth' });
+}
+
+async function send() {
+  const input = document.getElementById('msgInput');
+  const message = input.value.trim();
+  if (!message) return;
+  input.value = '';
+  addMsg('شما', message, 'user');
+  setStatus('در حال پردازش...');
+  const agents = state.selected.size ? [...state.selected] : null;
+  log(`user: ${message}`);
+  try {
+    const r = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, agents })
+    });
+    const data = await r.json();
+    for (const rep of data.replies || []) {
+      addMsg(rep.agent, rep.text, 'bot');
+      log(`reply: ${rep.agent}`);
+      speak(rep.text);
+    }
+  } catch (e) {
+    addMsg('خطا', String(e), 'bot');
+    log('error: ' + e);
+  } finally {
+    setStatus('آماده');
+  }
+}
+
+// ─── صدا ───
+let recognition = null;
+const voiceBtn = document.getElementById('voiceBtn');
+if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = 'fa-IR';
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.onresult = (e) => {
+    document.getElementById('msgInput').value = e.results[0][0].transcript;
+    voiceBtn.classList.remove('listening');
+    send();
+  };
+  recognition.onerror = (e) => { log('voice error: ' + e.error); voiceBtn.classList.remove('listening'); };
+  recognition.onend = () => voiceBtn.classList.remove('listening');
+  voiceBtn.onclick = () => {
+    if (voiceBtn.classList.contains('listening')) {
+      recognition.stop(); voiceBtn.classList.remove('listening');
+    } else {
+      recognition.start(); voiceBtn.classList.add('listening'); log('voice: listening...');
+    }
+  };
+} else {
+  voiceBtn.onclick = () => alert('مرورگر پشتیبانی نمی‌کند. از Chrome استفاده کن.');
+}
+
+// ─── TTS ───
+function speak(text) {
+  if (!('speechSynthesis' in window)) return;
+  const clean = text.replace(/```[\s\S]*?```/g, '').replace(/[#*`]/g, '');
+  const u = new SpeechSynthesisUtterance(clean.slice(0, 400));
+  u.lang = state.lang === 'fa' ? 'fa-IR' : 'en-US';
+  u.rate = 1.0;
+  window.speechSynthesis.speak(u);
+}
+
+// ─── terminal ───
+document.getElementById('termInput').onkeydown = async (e) => {
+  if (e.key !== 'Enter') return;
+  const cmd = e.target.value.trim();
+  e.target.value = '';
+  const termLog = document.getElementById('termLog');
+  termLog.textContent = '$ ' + cmd;
+  if (cmd === 'help') { termLog.textContent = 'دستورات: git-status, agents, clear, files'; return; }
+  if (cmd === 'git-status') {
+    const r = await fetch('/api/git/status', { method: 'POST', headers: {'Content-Type':'application/json'}, body: '{}' });
+    const d = await r.json();
+    termLog.textContent = d.status.stdout || d.status.stderr;
+    return;
+  }
+  if (cmd === 'agents') { termLog.textContent = `${state.agents.length} agent`; return; }
+  if (cmd === 'files') {
+    const r = await fetch('/api/file/list', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({path: '.'}) });
+    const d = await r.json();
+    termLog.textContent = (d.items || []).map(i => (i.dir ? '📁 ' : '📄 ') + i.name).join('\n');
+    return;
+  }
+  if (cmd === 'clear') { termLog.textContent = ''; document.getElementById('logList').innerHTML = ''; return; }
+  termLog.textContent = 'ناشناخته. help را بزن.';
+};
+
+// ─── file modal ───
+const fileModal = document.getElementById('fileModal');
+document.getElementById('newFileBtn').onclick = () => fileModal.classList.add('on');
+document.getElementById('fileCancel').onclick = () => fileModal.classList.remove('on');
+document.getElementById('fileSave').onclick = async () => {
+  const p = document.getElementById('fileName').value.trim();
+  const c = document.getElementById('fileContent').value;
+  if (!p) return alert('نام فایل لازم است');
+  const r = await fetch('/api/file/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: p, content: c })
+  });
+  const d = await r.json();
+  if (d.ok) {
+    log(`file created: ${d.path}`);
+    fileModal.classList.remove('on');
+    document.getElementById('fileName').value = '';
+    document.getElementById('fileContent').value = '';
+    alert('✅ ساخته شد: ' + d.path);
+  } else {
+    alert('❌ خطا: ' + d.error);
+  }
+};
+
+// ─── lang toggle ───
+document.getElementById('langBtn').onclick = () => {
+  state.lang = state.lang === 'fa' ? 'en' : 'fa';
+  document.getElementById('langBtn').textContent = state.lang === 'fa' ? '🌐 FA' : '🌐 EN';
+  document.documentElement.lang = state.lang;
+  document.documentElement.dir = state.lang === 'fa' ? 'rtl' : 'ltr';
+  log(`language: ${state.lang}`);
+};
+
+// ─── boot ───
+document.getElementById('sendBtn').onclick = send;
+document.getElementById('msgInput').onkeydown = (e) => { if (e.key === 'Enter') send(); };
+loadAgents();
+log('ready');
+</script>
+</body>
+</html>

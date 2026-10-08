@@ -1,0 +1,90 @@
+name: Deploy Horizon Ecosystem
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. Checkout کد
+      - name: Checkout horizon-deploy
+        uses: actions/checkout@v4
+
+      # 2. نصب Go (برای ساخت Core Engine)
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      # 3. نصب Node.js (برای UI و Agents)
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      # 4. نصب Python (برای Agents)
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # 5. کش Go modules برای سرعت بخشیدن
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/go/pkg/mod
+            ~/.cache/go-build
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      # 6. کش npm برای سرعت بخشیدن
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      # 7. تنظیم متغیرهای محیطی از Secrets
+      - name: Set up environment
+        run: |
+          cp .env.example .env
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
+          echo "DB_PASS=${{ secrets.DB_PASS }}" >> .env
+          echo "API_SECRET=${{ secrets.API_SECRET }}" >> .env
+          echo "ETH_NODE_URL=${{ secrets.ETH_NODE_URL }}" >> .env
+
+      # 8. اجرای اسکریپت اصلی
+      - name: Run Horizon Deploy Script
+        id: deploy
+        run: |
+          chmod +x scripts/horizon-deploy.sh
+          ./scripts/horizon-deploy.sh install
+        continue-on-error: true  # حتی اگر خطا رخ دهد، لاگ‌ها آپلود می‌شوند
+
+      # 9. آپلود لاگ‌ها به‌عنوان Artifact (برای بررسی بعدی)
+      - name: Upload logs
+        if: always()  # حتی اگر مرحله‌ی قبل fail شده باشد، اجرا می‌شود
+        uses: actions/upload-artifact@v4
+        with:
+          name: horizon-ecosystem-logs
+          path: ~/horizon-ecosystem/logs/
+          retention-days: 7
+
+      # 10. نمایش وضعیت نهایی
+      - name: Show final status
+        if: always()
+        run: |
+          if [ ${{ steps.deploy.outcome }} == 'success' ]; then
+            echo "✅ کل اکوسیستم Horizon با موفقیت مستقر شد!"
+          else
+            echo "❌ استقرار با خطا مواجه شد. لطفاً لاگ‌های آپلودشده را بررسی کنید."
+          fi

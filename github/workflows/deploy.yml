@@ -1,0 +1,25 @@
+name: Deploy Horizon Ecosystem
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout horizon-deploy
+        uses: actions/checkout@v4
+
+      - name: Set up environment variables
+        run: |
+          cp .env.example .env
+          # می‌توانید مقادیر را از secrets پر کنید
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> .env
+          echo "DB_PASS=${{ secrets.DB_PASS }}" >> .env
+
+      - name: Run Horizon Deploy Script
+        run: |
+          chmod +x scripts/horizon-deploy.sh
+          ./scripts/horizon-deploy.sh install
